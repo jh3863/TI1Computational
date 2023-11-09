@@ -53,12 +53,14 @@ cGivenKK = @(k,kprime) z.*k.^alpha + (1-delta).*k - kprime
 %kprime = @(k,c) z.*k.^alpha + (1-delta).*k - c;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% %%% 00a SETUP %%%
+%% %%% 01A Delta = 1, gN=500 %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 A = 1/(1-beta).*(log(z) + log(1-alpha*beta)+alpha * beta/ (1-alpha * beta) *log(alpha * beta));
 B = alpha / (1-alpha * beta);
 
+Vtrue = @(k) A + B * log(k)
+Ptrue = @(k) (beta*B*z*k.^alpha)./(beta*B+1)
 
 %kprime(0.5,0)
 %u(cGivenKK(gridK,gridK'))
@@ -78,21 +80,22 @@ end
 VdiffH(1000:iter+1)
 iter
 
+figure; set(gcf,'position',[400,800,1500,600]);
+p =subplot(1,2,1);
+plot(gridK, Vtrue(gridK),'--', 'LineWidth',8); grid on; hold on; ylabel('k_{t+1}'); xlabel('k_{t}');
+plot(gridK, Vhistory(:,[iter]), 'LineWidth',4); title('Value Function V(k_t) '); p.FontSize =30;
 
-figure
-subplot(1,2,1);
 
-figure
-plot(gridK, A + B*log(gridK), 'LineWidth',4); grid on; hold on;
-plot(gridK, Vhistory(:,[iter]), 'LineWidth',2); grid on; hold on;
+p = subplot(1,2,2);
+plot(gridK, Ptrue(gridK),'--', 'LineWidth',8); grid on; hold on; ylabel('k_{t+1}'); xlabel('k_{t}');
+plot(gridK, gridK(index) , 'LineWidth',4); title('Policy Function k_{t+1}(k_t) '); p.FontSize =30;
+legend([{'Theoretial'} {'VFI'} ],'Location','southeast');
 
-[A + B*log(gridK)   Vhistory(:,[iter])]
-%plot(gridK, Vhistory(:,[1:100:1000 iter]), 'LineWidth',2); grid on; hold on;
+saveas(gcf,'plots/Q2a.png');
 
-title('Value Function')
+% [Vtrue(gridK)   Vhistory(:,[iter])]
+% [Ptrue(gridK)   gridK(index)]
 
-subplot(1,2,2);
-plot(gridK, gridK(index) , 'LineWidth',2); grid on; title('K` Policy Function')
 
 
 
