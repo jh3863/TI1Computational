@@ -1,6 +1,6 @@
 % TI1_00_main
 % =========================================================================
-% Author: Jacob Hartwig (jhartwig@uchicago.edu)
+% Author: ...
 % Date: 231109
 % Version: 1.0 231109 JH Initial Release
 %            -
@@ -8,18 +8,19 @@
 % Source:
 %
 % Description:
-%       - setup workspace environment
+%       - Computational 
 %
 % Required Input:
+%       - No path definitions needed. Set path to folder containing this
+%       script and the plots subfolder
 %
 % Output:
 %
 % Improvements:
-%       -
+%       - move VFI (& plotting) into separate scripts/functions
 %       -
 %
 %=========================================================================
-
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -118,7 +119,6 @@ delta= 0.5;
 % define C for a given k and k' using the budget constraint
 cGivenKK = @(k,kprime) z.*k.^alpha + (1-delta).*k - kprime
 
-
 % theoretical steady state values
 theoryK_steadystate = (alpha*z*beta/(1-beta+beta*delta))^(1/(1-alpha));
 theoryC_steadystate = z*theoryK_steadystate^alpha-delta*theoryK_steadystate;
@@ -139,11 +139,16 @@ V = 0.* gridK;
 % define objects to track v_n at each iteration
 Vhistory(:,1) = V; VdiffH = nan(1,iterMax);
 
-% run VFI
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%% 01B CALCULATE value & policy function%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 tic
 while Vdiff>tol & iter <iterMax
     cfeasible = cGivenKK(gridK,gridK')>=0;
     c = cGivenKK(gridK,gridK') .* cfeasible;
+
+    % new value function & index of optimal capital choice (ie policy funtion)
     [Vnew , index] = max( u(c) + beta* V',[], 2   );
     Vdiff = sum((Vnew- V).^2); V= Vnew; iter = iter+1;
 
@@ -153,6 +158,10 @@ end
 toc
 VdiffH(iter-5:iter+1)
 iter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%% 01B PLOT value & policy function %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 figure; set(gcf,'position',[400,800,1500,600]);
 p =subplot(1,2,1);
@@ -168,6 +177,11 @@ legend([{'VFI'} {'45°'} ],'Location','southeast');
 
 saveas(gcf,'plots/Q2b.png');
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%% 01B COMPUTE steady states %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 [gridK gridK(index) gridK-gridK(index)]
 
 [~,index_steadyK]= min(abs(gridK-gridK(index)));
@@ -178,7 +192,6 @@ K_ss_diff = K_steadystate-theoryK_steadystate;
 C_ss_diff = cGivenKK(K_steadystate,K_steadystate)-theoryC_steadystate;
 [cGivenKK(K_steadystate,K_steadystate) theoryC_steadystate C_ss_diff C_ss_diff/theoryC_steadystate]
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% %%% 01C Delta = 0.5,Loop over grid sizes %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -187,9 +200,12 @@ C_ss_diff = cGivenKK(K_steadystate,K_steadystate)-theoryC_steadystate;
 gNgrid = [50, 100, 500, 1000, 2000];
 gNgridLength = size(gNgrid,2);
 
+% create arrays to store run time and steady states
 gNgridTime = nan(1,gNgridLength);
 gNgridKss  = nan(1,gNgridLength);
 gNgridCss  = nan(1,gNgridLength);
+
+% loop over different grid sizes
 for iNgrid=1:gNgridLength
     gN   = gNgrid(iNgrid); 
 
@@ -229,9 +245,9 @@ for iNgrid=1:gNgridLength
 
 end
 
-gNgridTime
-gNgridKss
-gNgridCss
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%% 01C PLOT run time & steady state deviations %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 figure; set(gcf,'position',[400,800,1500,600]);
 p =subplot(1,3,1);
