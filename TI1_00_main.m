@@ -125,7 +125,7 @@ theoryC_steadystate = z*theoryK_steadystate^alpha-delta*theoryK_steadystate;
 
 
 % update k grid
-gN   = 500; Vhistory = nan(gN,iterMax);
+gN   = 250; Vhistory = nan(gN,iterMax);
 kbar = [0.1 (z./(delta))^(1/(1-alpha)) ];
 gridK= [kbar(1):(kbar(2)-kbar(1))/(gN-1):kbar(2)]'
 
@@ -158,6 +158,12 @@ end
 toc
 VdiffH(iter-5:iter+1)
 iter
+
+
+PS01.polKindex = gridK(index)
+PS01.V = Vhistory(:,[iter]);
+
+save('dta/PS01.mat',"PS01")
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % %%% 01B PLOT value & policy function %%%
