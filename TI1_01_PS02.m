@@ -110,12 +110,13 @@ p=subplot(1,2,1)
 plot(gridK, PS01.V, 'LineWidth',4); grid on; hold on; ylabel('k_{t+1}'); xlabel('k_{t}');
 plot(gridK, V(:,1),'--', 'LineWidth',4); grid on; 
 title('Value Function V(k_t) '); p.FontSize =25;
+legend([{'V^d PS02'} {'V^d PS01'} ],'Location','southeast');
 
 p = subplot(1,2,2);
 plot(gridK, gridK(polKindex(:,1)) , 'LineWidth',4); grid on; hold on; ylabel('k_{t+1}'); xlabel('k_{t}');
 plot(gridK, PS01.polKindex,'--' , 'LineWidth',2);
 title('Policy Function k_{t+1}(k_t) '); p.FontSize =25;
-legend([{'V PS01'} {'V PS02'} ],'Location','southeast');
+legend([{'k_{t+1} PS02'} {'k_{t+1} PS01'} ],'Location','southeast');
 
 saveas(gcf,'plots/PS02B.png');
 
@@ -215,19 +216,23 @@ zdrawsBin = zdraws < 0.5;
 kpath = nan(Ntimesteps+1,Npaths);
 kindexpath = nan(Ntimesteps+1,Npaths);
 kpath(1,:) = k0;
-%kindexpath(1,:) = 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%% 01D1 Simluate paths %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% simulate for all paths in parallel
 for iTime = 1:Ntimesteps
     [~, kindex ]= min(abs(gridK-kpath(iTime,:)));
-    
-    %sub2ind([gNk gNz], kindex  , zdrawsBin(iTime,:)+1)
     kpath(iTime+1,:)      = PS02.Q1c.polK( sub2ind([gNk gNz], kindex  , zdrawsBin(iTime,:)+1));
-    % PS02.Q1c.polK(kindexpath(iTime,:)  , zdrawsBin(iTime)+1)
-    %kindexpath(iTime+1,:) = zdrawsBin
 end
+
+%
 [kpath [zdrawsBin(1,:); zdrawsBin]]
 
-
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%% 01D2 PLOT simluated paths %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 figure; set(gcf,'position',[400,800,1500,600]);
 p=subplot(1,2,1)
 plot([1:50+1],kpath(1:51,1), 'LineWidth',4); grid on; hold on; ylabel('k_{t+1}'); xlabel('t');
@@ -239,25 +244,9 @@ title('Many simualted paths'); p.FontSize =25;
 
 saveas(gcf,'plots/PS02D.png');
 
-
 % mean after 50 time periods
 mean(kpath(50:end,:))
 
-
-
-kpath(:,1)
-
-[~, kindex ]= min(abs(gridK-repmat(k0,1,Npaths)))
-kindexpath
-
-PS02.Q1c.polK 
-PS02.Q1c.polK
-[
-zdraws < 0.5
-mean((zdraws-0.5).^2)
-
-figure
-scatter(rand(50,1),[1:50])
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% %%% 01E Marko Shocks %%%
@@ -266,4 +255,100 @@ scatter(rand(50,1),[1:50])
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% %%% 01F Tauchen Method for AR(1) approximation %%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+gNz = 5; mu=2.5; rho=0.95; sigma=0.150; m=2.5;
+[gridZ, Q ]= tauchen(gNz,mu,rho,sigma,m);
+gridZ
+
+%gridZ = gridZ
+
+
+% define wider capital grid
+gNk   = 500;
+kbar = [0.01 (max(gridZ)./(delta))^(1/(1-alpha))/6 ];
+gridK= [kbar(1):(kbar(2)-kbar(1))/(gNk-1):kbar(2)]';
+
+%cGivenKK = @(k,kprime,z) z.*k.^alpha + (1-delta).*k - kprime;
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%% 01F CALCULATE value & policy function %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% initialize value function iteration (VFI)
+Vdiff=10; iter=0; 
+
+% define initial value function guess
+V = 0.*meshgrid(gridZ,gridK);
+Vnew = 0.5*V
+% define objects to track v_n at each iteration
+VdiffH = nan(1,iterMax);
+
+polKindex = 0.*meshgrid(gridZ,gridK);
+
+% run VFI
+tic 
+while Vdiff>tol & iter <iterMax
+    
+    for iZ =1:gNz
+        cfeasible = cGivenKK(gridK,gridK',gridZ(iZ))>=0;
+        c = cGivenKK(gridK,gridK',gridZ(iZ)) .* cfeasible;
+        [VnewCol , index] =max( u(c) + beta * Q(iZ,:) * V' ,[], 2   );  %max( u(c) + beta * V * Q(iZ,:)',[], 2   );
+        Vnew(:,iZ) = VnewCol;
+        polKindex(:,iZ) = index;
+    end
+    %Vdiff = sum((Vnew- V).^2,[1 2]); V= Vnew; iter = iter+1;
+    Vdiff = max(abs(Vnew- V),[],[1 2]); V= Vnew; iter = iter+1;
+
+    % store history
+    VdiffH(iter) = Vdiff./tol; %Vhistory(:,iter) = V;
+end
+VFIps02_time = toc
+%VdiffH(1000:iter+1)
+iter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%% 01F2 PLOT value & policy function %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+PS02.Q1f.V = V;
+PS02.Q1f.polK = gridK(polKindex(:,:));
+
+% set seed
+rng(7);
+
+k0 = 5;
+Ntimesteps = 300;
+Npaths = 25;
+zdraws    = rand(Ntimesteps,Npaths);
+zdrawsBin = zdraws < 0.5;
+
+kpath = nan(Ntimesteps+1,Npaths);
+kindexpath = nan(Ntimesteps+1,Npaths);
+kpath(1,:) = k0;
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%% 01D1 Simluate paths %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% simulate for all paths in parallel
+for iTime = 1:Ntimesteps
+    [~, kindex ]= min(abs(gridK-kpath(iTime,:)));
+    kpath(iTime+1,:)      = PS02.Q1f.polK( sub2ind([gNk gNz], kindex  , zdrawsBin(iTime,:)+1));
+end
+
+%
+[kpath [zdrawsBin(1,:); zdrawsBin]]
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% %%% 01D2 PLOT simluated paths %%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+figure; set(gcf,'position',[400,800,1500,600]);
+p=subplot(1,2,1)
+plot([1:50+1],kpath(1:51,1), 'LineWidth',4); grid on; hold on; ylabel('k_{t+1}'); xlabel('t');
+title('Single simulated path'); p.FontSize =25;
+
+p = subplot(1,2,2);
+plot([1:Ntimesteps+1],kpath(:,1:3)); grid on; ylabel('k_{t+1}'); xlabel('t');
+title('Many simualted paths'); p.FontSize =25;
+
+saveas(gcf,'plots/PS02F.png');
 
